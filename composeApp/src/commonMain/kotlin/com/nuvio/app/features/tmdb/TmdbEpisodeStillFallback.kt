@@ -239,7 +239,19 @@ internal class TmdbEpisodeStillFallbackService internal constructor(
 
     private fun isEligible(video: MetaVideo): Boolean {
         val season = video.season ?: return false
-        return season >= 2 && video.episode != null && video.thumbnail.isNullOrBlank()
+        return season >= 2 && video.episode != null && isReplaceableThumbnail(video.thumbnail)
+    }
+
+    /**
+     * A thumbnail may be filled when it is absent or when it is a known placeholder. AIOMetadata's
+     * `blurThumbs` option rewrites real stills through `/api/image/blur`, which yields an
+     * unrecognizable gradient, so those URLs count as placeholders too.
+     */
+    private fun isReplaceableThumbnail(url: String?): Boolean {
+        val value = url?.trim()
+        if (value.isNullOrBlank()) return true
+        val lower = value.lowercase()
+        return BLUR_PROXY_PATH in lower || MISSING_THUMBNAIL in lower
     }
 
     private fun tvdbSeasonCounts(videos: List<MetaVideo>): Map<Int, Int> =
@@ -287,6 +299,8 @@ internal class TmdbEpisodeStillFallbackService internal constructor(
         const val MIN_TITLE_LENGTH = 4
         const val STILL_BASE_URL = "https://image.tmdb.org/t/p/"
         const val STILL_SIZE = "w500"
+        const val BLUR_PROXY_PATH = "/api/image/blur"
+        const val MISSING_THUMBNAIL = "missing_thumbnail.png"
         val NON_ALPHANUMERIC = Regex("[^a-z0-9]+")
         val GENERIC_TITLE = Regex("(?i)\\b(episode|ep|e)\\s*\\d+\\b")
         val NORMALIZED_GENERIC = Regex("^(episode|ep|e)\\d+$")

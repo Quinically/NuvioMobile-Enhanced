@@ -9,6 +9,9 @@ import kotlin.test.assertTrue
 
 class TmdbEpisodeStillFallbackTest {
     private val base = "https://image.tmdb.org/t/p/w500"
+    private val blurredThumbnail =
+        "https://aiometadata.forthewizards.uk/api/image/blur?url=" +
+            "https%3A%2F%2Fartworks.thetvdb.com%2Fbanners%2Fepisodes%2F1.jpg"
 
     private class FakeSource(
         private val showId: Long? = 42L,
@@ -273,6 +276,66 @@ class TmdbEpisodeStillFallbackTest {
 
         assertEquals(expected(input, mapOf(2 to 1 to "$base/new.jpg")), result)
         assertEquals("https://addon.example/existing.jpg", result.videos.first { it.episode == 2 && it.season == 2 }.thumbnail)
+    }
+
+    @Test
+    fun `blur proxy thumbnail is replaced with a verified TMDB still`() = runTest {
+        val title = "The Finale"
+        val blurred = blurredThumbnail
+        val input = meta(
+            tvdbCounts = mapOf(1 to 2, 2 to 1),
+            titles = mapOf(2 to 1 to title),
+            releases = mapOf(2 to 1 to "2024-06-01"),
+            thumbnails = mapOf(2 to 1 to blurred),
+        )
+        val source = FakeSource(
+            seasons = mapOf(1 to 2, 2 to 1),
+            episodes = mapOf(still(2, 1, title, "2024-06-01", "/finale.jpg")),
+        )
+
+        val result = fallback(source).applyTo(input, "tt1")
+
+        assertEquals(expected(input, mapOf(2 to 1 to "$base/finale.jpg")), result)
+    }
+
+    @Test
+    fun `blur proxy thumbnail stays unchanged when no TMDB still matches`() = runTest {
+        val blurred = blurredThumbnail
+        val input = meta(
+            tvdbCounts = mapOf(1 to 24, 2 to 2),
+            titles = mapOf(2 to 2 to "The Choice"),
+            releases = mapOf(2 to 2 to "2021-02-01"),
+            thumbnails = mapOf(2 to 2 to blurred),
+        )
+        val source = FakeSource(
+            seasons = mapOf(1 to 40),
+            episodes = mapOf(still(1, 27, "Recap", "2021-02-01", "/recap.jpg")),
+        )
+
+        val result = fallback(source).applyTo(input, "tt1")
+
+        assertEquals(input, result)
+    }
+
+    @Test
+    fun `normal http image thumbnail is never replaced`() = runTest {
+        val title = "The Finale"
+        val normal = "https://addon.example/normal.jpg"
+        val input = meta(
+            tvdbCounts = mapOf(1 to 2, 2 to 1),
+            titles = mapOf(2 to 1 to title),
+            releases = mapOf(2 to 1 to "2024-06-01"),
+            thumbnails = mapOf(2 to 1 to normal),
+        )
+        val source = FakeSource(
+            seasons = mapOf(1 to 2, 2 to 1),
+            episodes = mapOf(still(2, 1, title, "2024-06-01", "/finale.jpg")),
+        )
+
+        val result = fallback(source).applyTo(input, "tt1")
+
+        assertEquals(input, result)
+        assertEquals(normal, result.videos.first { it.season == 2 && it.episode == 1 }.thumbnail)
     }
 
     @Test
