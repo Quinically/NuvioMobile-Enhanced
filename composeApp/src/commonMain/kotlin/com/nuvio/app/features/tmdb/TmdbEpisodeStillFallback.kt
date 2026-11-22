@@ -78,7 +78,7 @@ internal class TmdbEpisodeStillFallbackService internal constructor(
 
     suspend fun applyTo(meta: MetaDetails, contentId: String?): MetaDetails = try {
         if (!shouldApply(meta)) return meta
-        if (!settings().enabled || apiKey().isBlank()) return meta
+        if (apiKey().isBlank()) return meta
         val cacheKey = listOfNotNull(contentId, meta.id, meta.imdbId)
             .map(String::trim)
             .firstOrNull(String::isNotBlank)

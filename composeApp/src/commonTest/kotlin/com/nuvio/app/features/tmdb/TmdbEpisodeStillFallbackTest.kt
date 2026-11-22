@@ -339,11 +339,10 @@ class TmdbEpisodeStillFallbackTest {
     }
 
     @Test
-    fun `disabled TMDB or blank API key leaves meta unchanged`() = runTest {
+    fun `blank API key leaves meta unchanged`() = runTest {
         val input = meta()
         val source = FakeSource(seasons = mapOf(1 to 30), episodes = mapOf(still(1, 3, "A Title", null, "/x.jpg")))
 
-        assertEquals(input, fallback(source, enabled = false).applyTo(input, "tt1"))
         assertEquals(input, fallback(source, apiKey = "").applyTo(input, "tt1"))
         assertEquals(0, source.showCalls)
     }

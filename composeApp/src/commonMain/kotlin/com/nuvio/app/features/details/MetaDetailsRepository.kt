@@ -819,7 +819,7 @@ object MetaDetailsRepository {
     ): Boolean {
         if (shouldFetchMdbListOnMetaScreen(meta, fallbackItemId, settings)) return true
         TmdbSettingsRepository.ensureLoaded()
-        if (TmdbSettingsRepository.snapshot().enabled && TmdbEpisodeStillFallback.shouldApply(meta)) return true
+        if (TmdbEpisodeStillFallback.shouldApply(meta)) return true
         if (OmdbEpisodeRatingsService.shouldApply(meta, TmdbSettingsRepository.snapshot())) return true
         return shouldApplyMoreLikeThisSource(meta)
     }
