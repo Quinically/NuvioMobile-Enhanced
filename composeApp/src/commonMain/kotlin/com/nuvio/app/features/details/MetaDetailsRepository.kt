@@ -21,6 +21,7 @@ import com.nuvio.app.features.servers.ServerItemRef
 import com.nuvio.app.features.servers.ServerUserStateProjection
 import com.nuvio.app.features.servers.message
 import com.nuvio.app.features.servers.serverFailure
+import com.nuvio.app.features.tmdb.TmdbEpisodeStillFallback
 import com.nuvio.app.features.tmdb.TmdbMetadataService
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
@@ -682,8 +683,14 @@ object MetaDetailsRepository {
                 settings = settings,
             )
         } ?: meta
+        val stillFilledMeta = withTimeoutOrNull(MDBLIST_ENRICH_TIMEOUT_MS) {
+            TmdbEpisodeStillFallback.applyTo(
+                meta = mdbListEnrichedMeta,
+                contentId = fallbackItemId,
+            )
+        } ?: mdbListEnrichedMeta
         val imdbRatedMeta = OmdbEpisodeRatingsService.applyTo(
-            meta = mdbListEnrichedMeta,
+            meta = stillFilledMeta,
             fallbackItemId = fallbackItemId,
             settings = TmdbSettingsRepository.snapshot(),
         )
@@ -812,6 +819,7 @@ object MetaDetailsRepository {
     ): Boolean {
         if (shouldFetchMdbListOnMetaScreen(meta, fallbackItemId, settings)) return true
         TmdbSettingsRepository.ensureLoaded()
+        if (TmdbEpisodeStillFallback.shouldApply(meta)) return true
         if (OmdbEpisodeRatingsService.shouldApply(meta, TmdbSettingsRepository.snapshot())) return true
         return shouldApplyMoreLikeThisSource(meta)
     }
@@ -845,6 +853,7 @@ object MetaDetailsRepository {
             append("|mdblist_account=${settings.accountScope.takeUnless { settings.hasApiKey }}")
             append("|more_like=${trackingSettings.moreLikeThisSource}:$traktAuthMode:${shouldUseSimklMoreLikeThis(trackingSettings.moreLikeThisSource)}")
             append("|tmdb=${tmdbSettings.enabled}:${tmdbSettings.useMoreLikeThis}:${tmdbSettings.language}")
+            append("|episode_stills=${tmdbSettings.enabled}")
             append("|omdb=${OmdbEpisodeRatingsService.hasApiKey}:${tmdbSettings.useEpisodeRatings}")
         }
     }
